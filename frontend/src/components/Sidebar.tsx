@@ -48,11 +48,25 @@ export function Sidebar() {
     };
 
     return (
-        <div className="flex h-screen w-64 flex-col border-r bg-white">
-            <div className="p-6">
-                <h1 className="text-2xl font-bold text-blue-600">MediGuard</h1>
+        <div className="flex h-screen w-64 flex-col border-r border-slate-800 bg-slate-900 text-slate-100 transition-all duration-300">
+            <div className="p-6 flex items-center gap-2">
+                <div className="p-1 bg-blue-600 rounded">
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="h-6 w-6 text-white"
+                    >
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
+                    </svg>
+                </div>
+                <h1 className="text-xl font-bold tracking-tight">MediGuard</h1>
             </div>
-            <nav className="flex-1 space-y-1 px-4">
+            <nav className="flex-1 space-y-1 px-3 py-4">
                 {links.map((link) => {
                     const Icon = link.icon;
                     const isActive = pathname === link.href;
@@ -61,10 +75,10 @@ export function Sidebar() {
                             key={link.href}
                             href={link.href}
                             className={cn(
-                                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
                                 isActive
-                                    ? "bg-blue-600 text-white shadow-md"
-                                    : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                                    ? "bg-blue-600 text-white shadow-lg shadow-blue-900/20"
+                                    : "text-slate-400 hover:bg-slate-800 hover:text-white"
                             )}
                         >
                             <Icon className="h-4 w-4" />
@@ -73,8 +87,12 @@ export function Sidebar() {
                     );
                 })}
             </nav>
-            <div className="border-t p-4">
-                <Button variant="ghost" className="w-full justify-start gap-3 text-red-500 hover:text-red-600 hover:bg-red-50" onClick={handleLogout}>
+            <div className="border-t border-slate-800 p-4">
+                <Button
+                    variant="ghost"
+                    className="w-full justify-start gap-3 text-slate-400 hover:bg-slate-800 hover:text-red-400 pl-3"
+                    onClick={handleLogout}
+                >
                     <LogOut className="h-4 w-4" />
                     Logout
                 </Button>
