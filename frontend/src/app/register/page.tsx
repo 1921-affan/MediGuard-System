@@ -136,37 +136,31 @@ export default function RegisterPage() {
                     </div>
 
                     {/* Password Strength Meter */}
-                    {password && (
-                        <div className="space-y-2">
-                            <div className="flex justify-between items-center text-xs">
-                                <span className="text-gray-500">Password Strength:</span>
-                                <span className={`font-medium ${strengthLabel === 'Weak' ? 'text-red-500' : strengthLabel === 'Medium' ? 'text-yellow-500' : 'text-green-500'}`}>
-                                    {strengthLabel}
-                                </span>
-                            </div>
-                            <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
-                                <div
-                                    className={`h-full transition-all duration-300 ${strengthColor}`}
-                                    style={{ width: `${(strength / 4) * 100}%` }}
-                                ></div>
-                            </div>
-                            <ul className="space-y-1 mt-2">
-                                {requirements.map((req, index) => {
-                                    const isMet = req.regex.test(password);
-                                    return (
-                                        <li key={index} className="flex items-center text-xs text-gray-500">
-                                            {isMet ? (
-                                                <Check className="h-3 w-3 text-green-500 mr-2" />
-                                            ) : (
-                                                <X className="h-3 w-3 text-gray-400 mr-2" />
-                                            )}
-                                            <span className={isMet ? "text-green-600" : "text-gray-500"}>{req.text}</span>
-                                        </li>
-                                    );
-                                })}
-                            </ul>
-                        </div>
-                    )}
+                    <div className="space-y-3 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                        <p className="text-xs font-semibold text-slate-500 mb-1">Password Requirements:</p>
+                        <ul className="space-y-1">
+                            <li className="flex items-center text-xs">
+                                {/[A-Z]/.test(password) ? <Check className="h-3 w-3 text-green-500 mr-2" /> : <div className="h-3 w-3 border border-slate-300 rounded-full mr-2" />}
+                                <span className={/[A-Z]/.test(password) ? "text-green-600 line-through decoration-green-600/50" : "text-slate-500"}>At least one uppercase letter</span>
+                            </li>
+                            <li className="flex items-center text-xs">
+                                {/[a-z]/.test(password) ? <Check className="h-3 w-3 text-green-500 mr-2" /> : <div className="h-3 w-3 border border-slate-300 rounded-full mr-2" />}
+                                <span className={/[a-z]/.test(password) ? "text-green-600 line-through decoration-green-600/50" : "text-slate-500"}>At least one lowercase letter</span>
+                            </li>
+                            <li className="flex items-center text-xs">
+                                {/[0-9]/.test(password) ? <Check className="h-3 w-3 text-green-500 mr-2" /> : <div className="h-3 w-3 border border-slate-300 rounded-full mr-2" />}
+                                <span className={/[0-9]/.test(password) ? "text-green-600 line-through decoration-green-600/50" : "text-slate-500"}>At least one number</span>
+                            </li>
+                            <li className="flex items-center text-xs">
+                                {/[!@#$%^&*]/.test(password) ? <Check className="h-3 w-3 text-green-500 mr-2" /> : <div className="h-3 w-3 border border-slate-300 rounded-full mr-2" />}
+                                <span className={/[!@#$%^&*]/.test(password) ? "text-green-600 line-through decoration-green-600/50" : "text-slate-500"}>At least one special character (!@#$%^&*)</span>
+                            </li>
+                            <li className="flex items-center text-xs">
+                                {password.length >= 8 ? <Check className="h-3 w-3 text-green-500 mr-2" /> : <div className="h-3 w-3 border border-slate-300 rounded-full mr-2" />}
+                                <span className={password.length >= 8 ? "text-green-600 line-through decoration-green-600/50" : "text-slate-500"}>Minimum 8 characters</span>
+                            </li>
+                        </ul>
+                    </div>
 
                     {/* Confirm Password Field */}
                     <div className="space-y-2">
