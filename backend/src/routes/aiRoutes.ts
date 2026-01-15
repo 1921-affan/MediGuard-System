@@ -12,4 +12,7 @@ router.post('/analyze', authenticate, authorize(['Doctor', 'Patient']), aiContro
 // Get History
 router.get('/:patientId', authenticate, authorize(['Doctor', 'Patient']), aiController.getInsights);
 
+// Chat with AI
+router.post('/chat', authenticate, authorize(['Patient', 'Doctor']), aiController.chat);
+
 export default router;

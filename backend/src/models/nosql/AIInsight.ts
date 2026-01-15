@@ -8,6 +8,8 @@ export interface IAIInsight extends Document {
     Confidence_Score: number;
     RAG_Reasoning: string;
     Rec_Plan_JSON: any; // Storing as Mixed/JSON
+    Key_Factors?: string[];
+    Medication_Links?: string[];
 }
 
 const AIInsightSchema: Schema = new Schema({
@@ -17,7 +19,9 @@ const AIInsightSchema: Schema = new Schema({
     Risk_Category: { type: String, enum: ['Low', 'Medium', 'High', 'Critical'], required: true },
     Confidence_Score: { type: Number, required: true },
     RAG_Reasoning: { type: String, required: true },
-    Rec_Plan_JSON: { type: Schema.Types.Mixed, required: true }
+    Rec_Plan_JSON: { type: Schema.Types.Mixed, required: true },
+    Key_Factors: { type: [String], default: [] },
+    Medication_Links: { type: [String], default: [] }
 });
 
 export default mongoose.model<IAIInsight>('AI_Insights', AIInsightSchema);

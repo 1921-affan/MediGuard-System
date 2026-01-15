@@ -1,11 +1,13 @@
 'use client';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { UploadCloud, CheckCircle, AlertCircle } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { UploadCloud, CheckCircle, AlertCircle, AlertTriangle, Pill, Activity } from 'lucide-react';
+import VitalsChart from '@/components/dashboard/VitalsChart';
+import AIChat from '@/components/dashboard/AIChat';
 
 export default function UploadPage() {
     const [file, setFile] = useState<File | null>(null);
@@ -15,6 +17,8 @@ export default function UploadPage() {
     const router = useRouter();
 
     const [aiResult, setAiResult] = useState<any>(null);
+    const [recentVitals, setRecentVitals] = useState<any[]>([]);
+    const [patientId, setPatientId] = useState<number | undefined>(undefined);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) setFile(e.target.files[0]);
@@ -48,8 +52,13 @@ export default function UploadPage() {
 
             setStatus('success');
             setMessage(`Successfully processed ${data.totalRows} records.`);
+
             if (data.aiAnalysis) {
                 setAiResult(data.aiAnalysis);
+                setPatientId(data.aiAnalysis.Patient_ID);
+            }
+            if (data.recentVitals) {
+                setRecentVitals(data.recentVitals);
             }
         } catch (err: any) {
             setStatus('error');
@@ -60,102 +69,147 @@ export default function UploadPage() {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 p-8 flex items-center justify-center">
-            <div className="w-full max-w-4xl grid gap-8 md:grid-cols-2">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Upload Vitals Data</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                        <div className="border-2 border-dashed border-slate-300 rounded-lg p-10 text-center hover:bg-slate-50 transition-colors">
-                            <UploadCloud className="mx-auto h-12 w-12 text-slate-400" />
-                            <p className="mt-2 text-sm text-slate-600">Drag and drop your CSV file here, or click to browse</p>
-                            <Input
-                                type="file"
-                                accept=".csv"
-                                onChange={handleFileChange}
-                                className="mt-4"
-                            />
-                        </div>
-
-                        {file && (
-                            <div className="flex items-center justify-between text-sm bg-slate-100 p-2 rounded">
-                                <span className="truncate max-w-[200px]">{file.name}</span>
-                                <span className="text-slate-500">{(file.size / 1024).toFixed(1)} KB</span>
-                            </div>
-                        )}
-
-                        {status === 'success' && (
-                            <div className="flex items-center gap-2 text-green-600 bg-green-50 p-3 rounded text-sm">
-                                <CheckCircle className="h-4 w-4" /> {message}
-                            </div>
-                        )}
-
-                        {status === 'error' && (
-                            <div className="flex items-center gap-2 text-red-600 bg-red-50 p-3 rounded text-sm">
-                                <AlertCircle className="h-4 w-4" /> {message}
-                            </div>
-                        )}
-
-                        <div className="flex gap-4">
-                            <Button variant="outline" onClick={() => router.back()} className="w-full">Cancel</Button>
-                            <Button onClick={handleUpload} disabled={!file || uploading} className="w-full">
-                                {uploading ? 'Processing...' : 'Upload & Analyze'}
-                            </Button>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* AI Analysis Result */}
-                {aiResult ? (
-                    <Card className="border-blue-100 shadow-md">
-                        <CardHeader className="bg-blue-50/50 pb-4">
-                            <CardTitle className="text-blue-900 flex items-center justify-between">
-                                AI Health Analysis
-                                <span className={cn("text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider",
-                                    aiResult.Risk_Category === 'Critical' || aiResult.Risk_Category === 'High'
-                                        ? "bg-red-100 text-red-700"
-                                        : "bg-green-100 text-green-700")}>
-                                    {aiResult.Risk_Category} Risk
-                                </span>
-                            </CardTitle>
+        <div className="min-h-screen bg-slate-50 p-4 md:p-8">
+            <div className="max-w-7xl mx-auto space-y-8">
+                {/* Upload Section */}
+                {!aiResult && (
+                    <Card className="max-w-2xl mx-auto">
+                        <CardHeader>
+                            <CardTitle>Upload Vitals Data</CardTitle>
+                            <CardDescription>Upload your CSV file to generate a comprehensive AI health analysis.</CardDescription>
                         </CardHeader>
-                        <CardContent className="space-y-6 pt-6">
-                            <div>
-                                <h4 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-2">Analysis & Reasoning</h4>
-                                <p className="text-slate-700 leading-relaxed bg-slate-50 p-4 rounded-lg border">
-                                    {aiResult.RAG_Reasoning}
-                                </p>
+                        <CardContent className="space-y-6">
+                            <div className="border-2 border-dashed border-slate-300 rounded-lg p-10 text-center hover:bg-slate-50 transition-colors">
+                                <UploadCloud className="mx-auto h-12 w-12 text-slate-400" />
+                                <p className="mt-2 text-sm text-slate-600">Drag and drop your CSV file here, or click to browse</p>
+                                <Input
+                                    type="file"
+                                    accept=".csv"
+                                    onChange={handleFileChange}
+                                    className="mt-4"
+                                />
                             </div>
 
-                            <div className="flex items-center justify-between text-sm text-slate-500 border-t pt-4">
-                                <span>AI Confidence: <span className="font-medium text-slate-900">{aiResult.Confidence_Score}%</span></span>
-                                <span>Source: Gemini 1.5 Pro</span>
-                            </div>
-
-                            {(aiResult.Risk_Category === 'High' || aiResult.Risk_Category === 'Critical') && (
-                                <div className="bg-red-50 border border-red-100 p-4 rounded-lg">
-                                    <div className="flex gap-3 mb-3">
-                                        <AlertCircle className="h-5 w-5 text-red-600 shrink-0" />
-                                        <p className="text-sm text-red-800 font-medium">
-                                            Your vitals indicate potential health risks. It is highly recommended to consult a specialist immediately.
-                                        </p>
-                                    </div>
-                                    <Button
-                                        className="w-full bg-red-600 hover:bg-red-700 text-white"
-                                        onClick={() => router.push('/patient/appointments')}
-                                    >
-                                        Find a Doctor Now
-                                    </Button>
+                            {file && (
+                                <div className="flex items-center justify-between text-sm bg-slate-100 p-2 rounded">
+                                    <span className="truncate max-w-[200px]">{file.name}</span>
+                                    <span className="text-slate-500">{(file.size / 1024).toFixed(1)} KB</span>
                                 </div>
                             )}
+
+                            {status === 'error' && (
+                                <div className="flex items-center gap-2 text-red-600 bg-red-50 p-3 rounded text-sm">
+                                    <AlertCircle className="h-4 w-4" /> {message}
+                                </div>
+                            )}
+
+                            <div className="flex gap-4">
+                                <Button variant="outline" onClick={() => router.back()} className="w-full">Cancel</Button>
+                                <Button onClick={handleUpload} disabled={!file || uploading} className="w-full">
+                                    {uploading ? 'Processing...' : 'Upload & Analyze'}
+                                </Button>
+                            </div>
                         </CardContent>
                     </Card>
-                ) : (
-                    <div className="flex items-center justify-center p-8 border-2 border-dashed border-slate-200 rounded-lg text-slate-400 bg-slate-50/50">
-                        <div className="text-center">
-                            <AlertCircle className="h-10 w-10 mx-auto mb-3 opacity-20" />
-                            <p>Upload vitals to generate<br />AI Health Analysis</p>
+                )}
+
+                {/* Analysis Dashboard */}
+                {aiResult && (
+                    <div className="space-y-6">
+                        {/* Header Badge */}
+                        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                            <div>
+                                <h1 className="text-2xl font-bold text-slate-900">Health Analysis Report</h1>
+                                <p className="text-slate-500">Generated based on your uploaded vitals and clinical history.</p>
+                            </div>
+                            <Badge className={`text-lg px-4 py-1.5 rounded-full capitalize ${aiResult.Risk_Category === 'Critical' || aiResult.Risk_Category === 'High' ? 'bg-red-100 text-red-700 hover:bg-red-100' :
+                                    aiResult.Risk_Category === 'Medium' ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-100' :
+                                        'bg-green-100 text-green-700 hover:bg-green-100'
+                                }`}>
+                                Risk Level: {aiResult.Risk_Category}
+                            </Badge>
+                        </div>
+
+                        {/* Main Grid */}
+                        <div className="grid gap-6 md:grid-cols-2">
+                            {/* Left Col: Chart & Reasoning */}
+                            <div className="space-y-6">
+                                <VitalsChart data={recentVitals} />
+
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle className="flex items-center gap-2 text-base">
+                                            <Activity className="h-5 w-5 text-blue-600" />
+                                            Clinical Reasoning
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <p className="text-slate-700 leading-relaxed text-sm">
+                                            {aiResult.RAG_Reasoning}
+                                        </p>
+                                    </CardContent>
+                                </Card>
+                            </div>
+
+                            {/* Right Col: Factors, Meds, Chat */}
+                            <div className="space-y-6">
+                                {/* Risk Factors */}
+                                <Card className="border-l-4 border-l-red-400">
+                                    <CardHeader className="pb-2">
+                                        <CardTitle className="flex items-center gap-2 text-base">
+                                            <AlertTriangle className="h-5 w-5 text-red-500" />
+                                            Key Risk Factors
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        {aiResult.Key_Factors && aiResult.Key_Factors.length > 0 ? (
+                                            <ul className="space-y-2">
+                                                {aiResult.Key_Factors.map((factor: string, i: number) => (
+                                                    <li key={i} className="text-sm text-slate-700 flex items-start gap-2">
+                                                        <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-red-400 shrink-0" />
+                                                        {factor}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        ) : (
+                                            <p className="text-sm text-slate-500 italic">No specific risk triggers identified.</p>
+                                        )}
+                                    </CardContent>
+                                </Card>
+
+                                {/* Medication Links */}
+                                <Card className="border-l-4 border-l-purple-400">
+                                    <CardHeader className="pb-2">
+                                        <CardTitle className="flex items-center gap-2 text-base">
+                                            <Pill className="h-5 w-5 text-purple-500" />
+                                            Medication Correlation
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        {aiResult.Medication_Links && aiResult.Medication_Links.length > 0 ? (
+                                            <ul className="space-y-2">
+                                                {aiResult.Medication_Links.map((link: string, i: number) => (
+                                                    <li key={i} className="text-sm text-slate-700 flex items-start gap-2">
+                                                        <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-purple-400 shrink-0" />
+                                                        {link}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        ) : (
+                                            <p className="text-sm text-slate-500 italic">No medication interactions detected.</p>
+                                        )}
+                                    </CardContent>
+                                </Card>
+
+                                {/* Chat Interface */}
+                                <AIChat patientId={patientId} contextId={aiResult._id} />
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end pt-8">
+                            <Button variant="outline" onClick={() => { setAiResult(null); setFile(null); }}>
+                                Upload Another File
+                            </Button>
                         </div>
                     </div>
                 )}

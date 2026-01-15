@@ -28,3 +28,18 @@ export const getInsights = async (req: AuthRequest, res: Response) => {
         res.status(500).json({ message: error.message });
     }
 };
+
+export const chat = async (req: AuthRequest, res: Response) => {
+    try {
+        const { message, contextId } = req.body;
+        const patientId = req.user?.referenceId; // Assuming Patient User
+
+        if (!message) return res.status(400).json({ message: 'Message required' });
+
+        const reply = await aiService.chatWithAI(patientId, message, contextId);
+        res.json({ reply });
+    } catch (error: any) {
+        console.error('Chat Error:', error);
+        res.status(500).json({ message: 'Chat failed' });
+    }
+};

@@ -30,7 +30,7 @@ export const analyzeHealth = async (patientId: number, trigger: 'Scheduled' | 'U
 
     // 2. Construct Prompt
     const prompt = `
-    You are an AI Medical Assistant. Analyze the following patient data to detect health risks.
+    You are an AI Medical Assistant. Analyze the patient data to assess health conditions and risks.
     
     Patient ID: ${patientId}
     
@@ -44,31 +44,31 @@ export const analyzeHealth = async (patientId: number, trigger: 'Scheduled' | 'U
     ${JSON.stringify(prescriptions)}
     
     Tasks:
-    1. Identify any health risks based on trends (e.g., rising BP, high stress).
-    2. Check for medication interactions or contraindications.
+    1. Identify health risks/conditions based on trends (e.g., "Stage 2 Hypertension identified based on consistent >160 systolic").
+    2. Check for medication interactions or correlations (e.g., "Bradycardia possibly linked to Atenolol").
     3. Determine Risk Category: 'Low', 'Medium', 'High', 'Critical'.
-    4. Provide reasoning (RAG Reasoning).
-    5. Recommend a plan.
+    4. Provide detailed reasoning (Health Conditions).
     
-    Output strictly in JSON format (do not use markdown code blocks):
+    Output strictly in JSON format (no markdown):
     {
       "riskCategory": "Low" | "Medium" | "High" | "Critical",
       "confidenceScore": 0-100,
-      "reasoning": "string",
+      "reasoning": "string (Summary of health conditions)",
+      "keyFactors": ["string (Specific readings/triggers, e.g. 'Systolic BP 162 at 10:00')"],
+      "medicationLinks": ["string (Observation linked to med, e.g. 'Dizziness may be side effect of X')"],
       "recommendations": { "lifestyle": ["str"], "medical": ["str"] }
     }
     `;
 
     // 3. Call Gemini
     try {
-        console.log('Gemini API Key Present:', !!process.env.GEMINI_API_KEY);
-        // Using standard gemini-pro for best availability
-        // Some keys/regions may not support 1.5-flash yet
-        const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+        // Use flash for speed
+        const model = genAI.getGenerativeModel({ model: "gemini-flash-latest", generationConfig: { responseMimeType: "application/json" } });
         const result = await model.generateContent(prompt);
         const response = result.response;
-        // Clean markdown code blocks if Gemini adds them
-        let text = response.text().replace(/```json/g, '').replace(/```/g, '').trim();
+        // Clean markdown code blocks if necessary (1.5-flash usually respects mimeType better)
+        let text = response.text();
+        if (text.startsWith('```json')) text = text.replace(/```json/g, '').replace(/```/g, '').trim();
 
         const parsedResult = JSON.parse(text);
 
@@ -79,13 +79,11 @@ export const analyzeHealth = async (patientId: number, trigger: 'Scheduled' | 'U
             Risk_Category: parsedResult.riskCategory,
             Confidence_Score: parsedResult.confidenceScore,
             RAG_Reasoning: parsedResult.reasoning,
-            Rec_Plan_JSON: parsedResult.recommendations
+            Rec_Plan_JSON: parsedResult.recommendations || {},
+            Key_Factors: parsedResult.keyFactors || [],
+            Medication_Links: parsedResult.medicationLinks || []
         });
         await insight.save();
-
-        if (parsedResult.riskCategory === 'High' || parsedResult.riskCategory === 'Critical') {
-            // Logic for high risk alert
-        }
 
         return insight;
 
@@ -93,4 +91,34 @@ export const analyzeHealth = async (patientId: number, trigger: 'Scheduled' | 'U
         console.error('AI Analysis Failed:', error);
         throw error;
     }
+};
+
+export const chatWithAI = async (patientId: number, message: string, contextId?: string) => {
+    // Retrieve context if provided (e.g., specific insight ID)
+    let contextData = "";
+    if (contextId) {
+        const insight = await AIInsight.findById(contextId);
+        if (insight) {
+            contextData = `
+            Context from previous analysis (Risk: ${insight.Risk_Category}):
+            Reasoning: ${insight.RAG_Reasoning}
+            Key Factors: ${insight.Key_Factors ? insight.Key_Factors.join(', ') : ''}
+            `;
+        }
+    }
+
+    // New Prompt
+    const prompt = `
+    You are a helpful AI Medical Assistant for Patient ${patientId}.
+    Context:
+    ${contextData}
+
+    User Question: "${message}"
+
+    Answer the user's question clearly and concisely based on the context. Do not give medical advice that replaces a doctor. If the user asks about the high risk, explain why based on the factors.
+    `;
+
+    const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+    const result = await model.generateContent(prompt);
+    return result.response.text();
 };

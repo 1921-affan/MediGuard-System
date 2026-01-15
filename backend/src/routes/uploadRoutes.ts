@@ -5,7 +5,7 @@ import multer from 'multer';
 import path from 'path';
 
 const router = express.Router();
-const upload = multer({ dest: 'uploads/' }); // Temp storage
+const upload = multer({ dest: 'uploads/' }); // Upload Vitals
 
 router.post(
     '/vitals',
@@ -14,5 +14,8 @@ router.post(
     upload.single('file'),
     uploadController.uploadVitals
 );
+
+// Get History
+router.get('/history', authenticate, authorize(['Patient']), uploadController.getVitalsHistory);
 
 export default router;

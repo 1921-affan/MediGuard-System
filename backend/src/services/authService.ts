@@ -122,7 +122,7 @@ export const updateProfile = async (userId: number, role: 'Patient' | 'Doctor' |
 };
 
 export const getAllDoctors = async () => {
-    const [rows] = await mysqlPool.query('SELECT Doctor_ID, Full_Name, Specialization, Consult_Hrs FROM Doctor');
+    const [rows] = await mysqlPool.query("SELECT Doctor_ID, Full_Name, Specialization, Consult_Hrs FROM Doctor");
     return rows;
 };
 
