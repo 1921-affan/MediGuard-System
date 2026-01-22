@@ -1,4 +1,5 @@
 import { mysqlPool } from '../config/database';
+import AIInsight from '../models/nosql/AIInsight';
 
 export const createRecord = async (data: any) => {
     const connection = await mysqlPool.getConnection();
@@ -69,5 +70,22 @@ export const getPatientsByDoctor = async (doctorId: number) => {
         WHERE cr.Doctor_ID = ? OR a.Doctor_ID = ?
     `;
     const [rows] = await mysqlPool.query(query, [doctorId, doctorId]);
+
+    // Enrich with AI Risk Data
+    const patientsWithRisk = await Promise.all((rows as any[]).map(async (patient) => {
+        const latestInsight = await AIInsight.findOne({ Patient_ID: patient.Patient_ID }).sort({ Generated_At: -1 });
+        return {
+            ...patient,
+            Latest_Risk: latestInsight ? latestInsight.Risk_Category : 'Unknown',
+            Latest_Insight_Date: latestInsight ? latestInsight.Generated_At : null
+        };
+    }));
+
+    return patientsWithRisk;
+};
+
+export const searchMedications = async (query: string) => {
+    const sql = `SELECT * FROM Medication WHERE Drug_Name LIKE ? LIMIT 10`;
+    const [rows] = await mysqlPool.query(sql, [`%${query}%`]);
     return rows;
 };

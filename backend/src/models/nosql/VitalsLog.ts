@@ -10,6 +10,7 @@ export interface IVitalsLog extends Document {
     Sleep_Hours?: number;
     Stress_Level?: string; // Or number, spec says "Stress_Level" usually 1-10 or Low/High. Spec didn't specify type, assuming String or Number. Let's use Number 1-10 based on typical "Level".
     Calorie_Intake?: number;
+    Oxygen_Level?: number;
     Symptom_Notes?: string;
 }
 
@@ -20,6 +21,7 @@ const VitalsLogSchema: Schema = new Schema({
     Heart_Rate: { type: Number },
     Systolic_BP: { type: Number },
     Diastolic_BP: { type: Number },
+    Oxygen_Level: { type: Number },
     Sleep_Hours: { type: Number },
     Stress_Level: { type: Number },
     Calorie_Intake: { type: Number },

@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import * as aiService from '../services/aiService';
 import AIInsight from '../models/nosql/AIInsight';
 
+import * as authService from '../services/authService';
+
 // AuthRequest helper
 interface AuthRequest extends Request {
     user?: any;
@@ -9,9 +11,20 @@ interface AuthRequest extends Request {
 
 export const analyzeHealth = async (req: AuthRequest, res: Response) => {
     try {
-        const patientId = parseInt(req.body.patientId || req.user?.referenceId);
+        let patientId: number;
+
+        if (req.user?.role === 'Patient') {
+            const profile: any = await authService.getProfile(req.user.id, 'Patient');
+            if (!profile) throw new Error('Patient profile not found for this user account.');
+            patientId = profile.Patient_ID;
+        } else {
+            patientId = parseInt(req.body.patientId);
+        }
+
+        if (!patientId) throw new Error('Patient ID not found');
+
         // Validation...
-        const result = await aiService.analyzeHealth(patientId, 'Doctor'); // Manual trigger usually by Doctor or Patient
+        const result = await aiService.analyzeHealth(patientId, 'Manual', req.body.symptoms); // Trigger 'Manual' for user-initiated
         res.json(result);
     } catch (error: any) {
         res.status(500).json({ message: 'Analysis Failed', error: error.message });

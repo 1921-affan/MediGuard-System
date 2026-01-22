@@ -15,6 +15,28 @@ export const bookAppointment = async (patientId: number, doctorId: number, time:
             throw new Error('Doctor is already having an appointment at this time. Please try another time.');
         }
 
+        // Validate Consulting Hours
+        const [doctorRows] = await connection.query('SELECT Consult_Hrs FROM Doctor WHERE Doctor_ID = ?', [doctorId]);
+        // @ts-ignore
+        const doctor = doctorRows[0];
+        if (doctor && doctor.Consult_Hrs) {
+            // Format "09:30 - 18:30"
+            const [startStr, endStr] = doctor.Consult_Hrs.split('-').map((s: string) => s.trim());
+
+            const apptDate = new Date(time);
+            const apptTime = apptDate.getHours() * 60 + apptDate.getMinutes();
+
+            const [startH, startM] = startStr.split(':').map(Number);
+            const [endH, endM] = endStr.split(':').map(Number);
+
+            const startMinutes = startH * 60 + startM;
+            const endMinutes = endH * 60 + endM;
+
+            if (apptTime < startMinutes || apptTime > endMinutes) {
+                throw new Error(`Appointment time is outside of doctor's consulting hours (${doctor.Consult_Hrs}).`);
+            }
+        }
+
         const [result] = await connection.query(
             'INSERT INTO Appointment (Patient_ID, Doctor_ID, Scheduled_Time, Visit_Reason, Status) VALUES (?, ?, ?, ?, "Scheduled")',
             [patientId, doctorId, time, reason]
@@ -27,18 +49,18 @@ export const bookAppointment = async (patientId: number, doctorId: number, time:
 };
 
 export const getAppointments = async (userId: number, role: string) => {
-    let query = 'SELECT * FROM Appointment';
+    let query = '';
     let params: any[] = [];
 
     if (role === 'Patient') {
-        // Need to join to find Patient_ID from User_ID first or assume passed. 
-        // For simplicity, assuming caller passes Patient_ID not User_ID, OR we join.
-        // Let's assume we pass the relevant ID.
-        query += ' WHERE Patient_ID = ?';
+        // Join with Doctor to get Doctor Name
+        query = 'SELECT a.*, d.Full_Name as Doctor_Name, d.Specialization FROM Appointment a JOIN Doctor d ON a.Doctor_ID = d.Doctor_ID WHERE a.Patient_ID = ? ORDER BY a.Scheduled_Time DESC';
         params = [userId];
     } else if (role === 'Doctor') {
-        query += ' WHERE Doctor_ID = ?';
+        query = 'SELECT * FROM Appointment WHERE Doctor_ID = ?';
         params = [userId];
+    } else {
+        query = 'SELECT * FROM Appointment';
     }
 
     const [rows] = await mysqlPool.query(query, params);

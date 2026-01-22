@@ -8,11 +8,19 @@ dotenv.config();
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
-export const analyzeHealth = async (patientId: number, trigger: 'Scheduled' | 'Upload' | 'Doctor') => {
+export const analyzeHealth = async (patientId: number, trigger: 'Scheduled' | 'Upload' | 'Doctor' | 'Manual', manualSymptoms?: string) => {
     // 1. Context Retrieval
-    const vitals = await VitalsLog.find({ Patient_ID: patientId })
+    const vitalsRaw = await VitalsLog.find({ Patient_ID: patientId })
         .sort({ Timestamp: -1 })
         .limit(20);
+
+    // Format Vitals for AI (Explicit Date/Time)
+    const vitals = vitalsRaw.map(v => ({
+        Date: new Date(v.Timestamp).toLocaleString(),
+        BP: `${v.Systolic_BP}/${v.Diastolic_BP}`,
+        HeartRate: v.Heart_Rate,
+        Oxygen: v.Oxygen_Level
+    }));
 
     const [history] = await mysqlPool.query(
         'SELECT * FROM Clinical_Record WHERE Patient_ID = ? ORDER BY Visit_Date DESC LIMIT 5',
@@ -20,7 +28,7 @@ export const analyzeHealth = async (patientId: number, trigger: 'Scheduled' | 'U
     );
 
     const [prescriptions] = await mysqlPool.query(
-        `SELECT p.*, m.Drug_Name 
+        `SELECT p.Dosage, p.Frequency, m.Drug_Name 
          FROM Prescription p 
          JOIN Clinical_Record c ON p.Record_ID = c.Record_ID 
          JOIN Medication m ON p.Med_ID = m.Med_ID
@@ -30,33 +38,47 @@ export const analyzeHealth = async (patientId: number, trigger: 'Scheduled' | 'U
 
     // 2. Construct Prompt
     const prompt = `
-    You are an AI Medical Assistant. Analyze the patient data to assess health conditions and risks.
+    You are an AI Medical Assistant analyzing Patient ${patientId}.
     
-    Patient ID: ${patientId}
+    PATIENT REPORTED SYMPTOMS (CURRENT): "${manualSymptoms || 'None reported'}"
+
+    PATIENT DATA:
+    Vitals History (Most Recent First): ${JSON.stringify(vitals)}
+    Clinical History (Past Diagnoses): ${JSON.stringify(history)}
+    Current/Past Prescriptions: ${JSON.stringify(prescriptions)}
+
+    CRITICAL INSTRUCTION: You are a LENIENT screening tool. Prioritize avoiding false alarms.
+    IGNORE internal medical knowledge about strict 'Elevated' definitions.
+    USE ONLY THE REFERENCE RANGES BELOW.
     
-    Recent Vitals (Last 20 readings):
-    ${JSON.stringify(vitals)}
-    
-    Clinical History (Last 5 records):
-    ${JSON.stringify(history)}
-    
-    Current Medications:
-    ${JSON.stringify(prescriptions)}
-    
-    Tasks:
-    1. Identify health risks/conditions based on trends (e.g., "Stage 2 Hypertension identified based on consistent >160 systolic").
-    2. Check for medication interactions or correlations (e.g., "Bradycardia possibly linked to Atenolol").
-    3. Determine Risk Category: 'Low', 'Medium', 'High', 'Critical'.
-    4. Provide detailed reasoning (Health Conditions).
-    
+    REFERENCE RANGES (ADULTS) - USE STRICTLY:
+    - Systolic BP: <135 mmHg (Normal), 135-139 (Stage 1), >140 (Stage 2/High).
+    - Diastolic BP: <85 mmHg (Normal), 85-89 (Stage 1), >90 (Stage 2/High).
+    - Heart Rate: 60-100 bpm (Normal).
+
+    TASKS:
+    1. Determine Risk Category based ONLY on the table above.
+    2. Provide THREE segments in your briefing:
+       - Segment 1 (Reasoning): A concise clinical summary (max 3 sentences) for professional context.
+       - Segment 2 (Key Factors): A list of specific risk drivers.
+       - Segment 3 (Suggestions): Actionable advice for the patient.
+         - Lifestyle: Diet, exercise, stress management based on their vitals.
+         - Medical: When to contact their doctor, medication adherence reminders.
+
+    STRICT DATA CONSTRAINT:
+    - If Recent Vitals are <135/85, Risk Category MUST be 'Low'.
+
     Output strictly in JSON format (no markdown):
     {
       "riskCategory": "Low" | "Medium" | "High" | "Critical",
-      "confidenceScore": 0-100,
-      "reasoning": "string (Summary of health conditions)",
-      "keyFactors": ["string (Specific readings/triggers, e.g. 'Systolic BP 162 at 10:00')"],
-      "medicationLinks": ["string (Observation linked to med, e.g. 'Dizziness may be side effect of X')"],
-      "recommendations": { "lifestyle": ["str"], "medical": ["str"] }
+      "confidenceScore": number (0-100),
+      "reasoning": "Concise clinical summary string",
+      "keyFactors": ["string (Factor 1)", "string (Factor 2)"],
+      "medicationLinks": ["string (Interactions/Reminders)"],
+      "recommendations": { 
+        "lifestyle": ["Actionable lifestyle tip 1", "Actionable lifestyle tip 2"], 
+        "medical": ["Actionable medical advice 1 (e.g. Consult doctor if...)"] 
+      }
     }
     `;
 
@@ -115,7 +137,7 @@ export const chatWithAI = async (patientId: number, message: string, contextId?:
 
     User Question: "${message}"
 
-    Answer the user's question clearly and concisely based on the context. Do not give medical advice that replaces a doctor. If the user asks about the high risk, explain why based on the factors.
+    Answer the user's question clearly and concisely based on the context. Do not give medical advice that replaces a doctor. If the user asks you about the high risk, explain why based on the factors.
     `;
 
     const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });

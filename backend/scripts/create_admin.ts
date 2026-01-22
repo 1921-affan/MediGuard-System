@@ -1,5 +1,5 @@
 
-import { mysqlPool } from '../config/database';
+import { mysqlPool } from '../src/config/database';
 
 const promoteToAdmin = async (email: string) => {
     try {

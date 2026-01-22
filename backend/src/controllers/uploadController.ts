@@ -42,7 +42,7 @@ export const uploadVitals = async (req: AuthRequest, res: Response) => {
         let recentVitals = [];
         try {
             // @ts-ignore
-            aiResult = await aiService.analyzeHealth(patientId, 'Upload');
+            aiResult = await aiService.analyzeHealth(patientId, 'Upload', req.body.symptoms);
 
             // Also fetch the vitals data for the chart (duplicate of what AI did, but needed for UI)
             // Ideally AI Service returns it, but this is fine for now
@@ -77,6 +77,28 @@ export const getVitalsHistory = async (req: AuthRequest, res: Response) => {
             .limit(20);
 
         res.json(vitals);
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const getPatientVitals = async (req: AuthRequest, res: Response) => {
+    try {
+        const patientId = req.params.patientId;
+
+        // Authorization Check (Doctor only)
+        if (req.user?.role !== 'Doctor') {
+            return res.status(403).json({ message: "Access denied. Doctors only." });
+        }
+
+        const VitalsLog = require('../models/nosql/VitalsLog').default;
+        // Fetch latest 20 readings
+        const vitals = await VitalsLog.find({ Patient_ID: patientId })
+            .sort({ Timestamp: -1 })
+            .limit(20);
+
+        res.json(vitals);
+
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }

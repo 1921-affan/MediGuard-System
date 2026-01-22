@@ -15,7 +15,7 @@ export interface IAIInsight extends Document {
 const AIInsightSchema: Schema = new Schema({
     Patient_ID: { type: Number, required: true, index: true }, // FK MySQL
     Generated_At: { type: Date, default: Date.now },
-    Trigger_Source: { type: String, enum: ['Scheduled', 'Upload', 'Doctor'], required: true },
+    Trigger_Source: { type: String, enum: ['Scheduled', 'Upload', 'Doctor', 'Manual'], required: true },
     Risk_Category: { type: String, enum: ['Low', 'Medium', 'High', 'Critical'], required: true },
     Confidence_Score: { type: Number, required: true },
     RAG_Reasoning: { type: String, required: true },

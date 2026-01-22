@@ -6,6 +6,7 @@ const router = express.Router();
 
 // @ts-ignore
 router.get('/my-patients', authenticate, authorize(['Doctor']), clinicalController.getMyPatients);
+router.get('/medications', authenticate, authorize(['Doctor']), clinicalController.searchMedications);
 router.post('/', authenticate, authorize(['Doctor']), clinicalController.addRecord);
 router.get('/:patientId', authenticate, authorize(['Doctor', 'Patient']), clinicalController.getHistory);
 

@@ -17,5 +17,6 @@ router.post(
 
 // Get History
 router.get('/history', authenticate, authorize(['Patient']), uploadController.getVitalsHistory);
+router.get('/history/:patientId', authenticate, authorize(['Doctor']), uploadController.getPatientVitals);
 
 export default router;

@@ -35,3 +35,13 @@ export const getMyPatients = async (req: Request, res: Response) => {
         res.status(500).json({ message: error.message });
     }
 };
+
+export const searchMedications = async (req: Request, res: Response) => {
+    try {
+        const query = req.query.q as string || '';
+        const results = await clinicalService.searchMedications(query);
+        res.json(results);
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
